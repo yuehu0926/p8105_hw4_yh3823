@@ -1,0 +1,103 @@
+---
+title: "Instacart Order Analysis"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(plotly)
+library(p8105.datasets)
+
+# Load data
+data("instacart")
+
+# Sample data for better performance
+set.seed(123)
+instacart_sample <- instacart %>%
+  sample_n(50000)
+```
+
+Column {data-width=400}
+-----------------------------------------------------------------------
+
+### Top 20 Most Popular Aisles
+
+```{r}
+aisle_plot <- instacart %>%
+  count(aisle) %>%
+  arrange(desc(n)) %>%
+  slice_head(n = 20) %>%
+  mutate(aisle = fct_reorder(aisle, n)) %>%
+  plot_ly(x = ~n, y = ~aisle, type = "bar", 
+          orientation = "h",
+          marker = list(color = "#1f77b4")) %>%
+  layout(
+    xaxis = list(title = "Number of Orders"),
+    yaxis = list(title = ""),
+    margin = list(l = 150)
+  )
+
+aisle_plot
+```
+
+Column {data-width=600}
+-----------------------------------------------------------------------
+
+### Order Patterns by Day of Week and Hour
+
+```{r}
+order_time <- instacart_sample %>%
+  count(order_dow, order_hour_of_day) %>%
+  mutate(
+    order_dow = factor(order_dow, 
+                      levels = 0:6, 
+                      labels = c("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"))
+  )
+
+time_plot <- plot_ly(order_time, 
+                     x = ~order_hour_of_day, 
+                     y = ~order_dow, 
+                     z = ~n,
+                     type = "scatter",
+                     mode = "markers",
+                     marker = list(
+                       size = ~n/50,
+                       color = ~n,
+                       colorscale = "Viridis",
+                       showscale = TRUE,
+                       colorbar = list(title = "Orders")
+                     )) %>%
+  layout(
+    xaxis = list(title = "Hour of Day"),
+    yaxis = list(title = "Day of Week")
+  )
+
+time_plot
+```
+
+### Items per Order by Department
+
+```{r}
+dept_order <- instacart_sample %>%
+  group_by(order_id, department) %>%
+  summarise(items = n(), .groups = "drop") %>%
+  filter(department %in% c("produce", "dairy eggs", "snacks", 
+                          "beverages", "frozen", "pantry"))
+
+box_plot <- plot_ly(dept_order, 
+                    y = ~items, 
+                    x = ~department, 
+                    type = "box",
+                    color = ~department) %>%
+  layout(
+    xaxis = list(title = ""),
+    yaxis = list(title = "Number of Items per Order"),
+    showlegend = FALSE
+  )
+
+box_plot
+```
